@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="de-DE">
+<meta charset="UTF-8">
+<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script> -->
+
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-animate.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-aria.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-messages.min.js"></script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.8/angular-material.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.8/angular-material.min.css">
+
+<!-- https://github.com/bevacqua/angularjs-dragula -->
+<link rel="stylesheet" href="https://rawgit.com/bevacqua/angular-dragula/master/dist/dragula.min.css">
+<script src="https://cdn.rawgit.com/bevacqua/angularjs-dragula/daa3ef94/dist/angularjs-dragula.js"></script>
+
+<!-- <script src="https://ajax.googleapis.com/ajax/libs/d3js/5.7.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.23.0/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.23.0/locale/de.js"></script> -->
+
+<head>
+  <style>
+    html, body{  margin:0;   padding:20px; width:100%; height:100%;overflow: hidden; }
+    .app__my-directive {  border: 1px dotted grey; padding:10px; width:250px; height:50px; line-height:50px;text-align:center; }
+    .item-handle{max-width:20px; text-align:center; cursor: move; height:20px; width:20px; background-color:#aaa;}
+    .item-label{
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    .ex-moved{ background-color:red;}
+
+    #dialog{
+      transition: translate 0s;
+    }
+
+  </style>
+</head>
+
+<body ng-app="myApp">
+
+  <my-directive></my-directive>
+
+</body>
+</html>
+
+<script type="text/javascript">
+
+  //window.onload = function() { }
+
+</script>
+
+
+<script type="text/javascript">
+  // ##############################  ANGULARJS APP #######################################
+
+  var app = angular.module("myApp", ['ngMaterial', angularDragula(angular)]);
+
+
+  app.directive('draggable', function( $window, $document, $timeout ) {
+      return {
+          restrict: 'A',
+          controller:function(){
+            var _ctrl = this;
+          },
+          link: function(scope, element, attr) {
+            var startX = 0,
+            startY = 0,
+            x = 0,
+            y = 0;
+            var container = null;
+
+            element.css({
+              position: 'relative',
+              cursor: 'pointer'
+            });
+
+            element.on('mousedown', function(event) {
+              event.preventDefault();
+              startX = event.screenX - x;
+              startY = event.screenY - y;
+              $document.on('mousemove', mousemove);
+              $document.on('mouseup', mouseup);
+              container = attr.$$element.parent();
+            });
+
+            function mousemove(event) {
+              y = event.screenY - startY;
+              x = event.screenX - startX;
+              container.css({
+                top: y + 'px',
+                left: x + 'px'
+              });
+            }
+
+            function mouseup() {
+              $document.unbind('mousemove', mousemove);
+              $document.unbind('mouseup', mouseup);
+            }
+          }
+      };
+  });
+
+  app.service("dialogService", function( $mdDialog ) {
+
+    this.show = function( $event ){
+      var parentEl = angular.element(document.body);
+      var dialog = {
+         parent: parentEl,
+         targetEvent: $event,
+         fullscreen : false,
+         draggable:true,
+         template:
+           '<md-dialog id="dialog"  aria-label="List dialog">' +
+             '<md-toolbar draggable class="handle-dialog">' +
+             '  <div class="md-toolbar-tools">' +
+             '    <h2>Mango (Fruit)</h2>' +
+             '    <span flex></span>' +
+             '  </div>' +
+           '  </md-toolbar>' +
+           '  <md-dialog-content>'+
+           '    <md-list id="content" dragula="\'bag-sections\'" dragula-model="dc.items" >'+
+           '      <md-list-item ng-repeat="item in dc.items"  >'+
+           '       <p class="item-handle"> + </p>' +
+           '       <p class="item-label">Number {{item.name}}</p>' +
+           '      '+
+           '    </md-list-item></md-list>'+
+           '  </md-dialog-content>' +
+           '  <md-dialog-actions>' +
+           '    <md-button ng-click="closeDialog()" class="md-primary">' +
+           '      Close Dialog' +
+           '    </md-button>' +
+           '  </md-dialog-actions>' +
+           '</md-dialog>',
+         locals: {
+           items: [{name:"1"},{name:"2"},{name:"3"}]
+         },
+         controllerAs:'dc',
+         controller: function( $scope, $mdDialog, items, dragulaService){
+            this.items = items;
+            $scope.closeDialog = function() {
+              $mdDialog.hide();
+            }
+
+            $scope.$on('bag-sections.over', function (e, el) {
+                  console.log("ei!")
+                  el.addClass('over');
+                })
+
+            dragulaService.options( $scope, 'bag-sections', {
+              removeOnSpill: false,
+              copy:false,
+              moves: function (el, container, handle) {
+                  // https://github.com/bevacqua/dragula/issues/119#issuecomment-125694373
+                  console.log("move it to >> ", container.id )
+                  return handle.classList.contains('item-handle');
+              }
+
+            });
+
+
+         }
+      }
+
+      $mdDialog
+       .show( dialog )
+    }
+  });
+
+
+  app.controller("myCtrl", function( $scope, dialogService ) {
+    var _ctrl = this;
+    $scope.firstName = "John";
+    $scope.lastName = "Doe";
+    _ctrl.ref = 1500;
+    //myService.alert()
+
+    _ctrl.openDialog = function(){
+      dialogService.show()
+    }
+
+  });
+
+  app.directive("myDirective", function() {
+    return {
+      restrict : "E",
+      templateUrl:'./myDirectiveTemplate.html',
+      //template : '<h1>Hello {{ firstName + " " + lastName }} !</h1> ref: {{mc.ref}}',
+      controller: 'myCtrl',
+      controllerAs: 'mc',
+      scope : {},
+      bindToController: true
+    };
+  });
+
+
+
+  //--------------- INIT APP
+
+  app.config(function(){   console.log("APP config")  })
+  app.run(function(){    console.log("APP run")  })
+
+</script>
